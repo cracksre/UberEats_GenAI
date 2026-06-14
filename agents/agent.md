@@ -1,4 +1,67 @@
-draw.io
+# Situation:  
+Let’s take a situation. I am a customer trying to find restaurants in my area.
+Most recommendations systems will go:
+“Here are the listed restaurants in your area”.
+At this stage the customer is confused if they should go for Korean, Chinese, Italian, American, etc.
+Maybe the best restaurant shown by review was 40 mins away and there is a waiting time. And then the intent to purchase just hangs there.
+For the business, it’s a lost opportunity. Maybe the customer and their family were hungry and that could mean a fat bill for the restaurant.
+Here comes the BIG issue of “Decision Friction”, which is causing businesses cumulatively USD 1B+ in lost business opportunity in the Restaurant and Food delivery industry.
+
+Most digital platforms obsess over:
+•	Discovery 
+•	Recommendations 
+•	Search relevance 
+•	Ads
+But the real leakage is after discovery.
+A customer finds:
+•	20 restaurants on Uber Eats
+•	Best reviewed restaurants on Yelp
+•	Highest stars received in Zomato
+Then they hesitate.
+This hesitation creates:
+•	Abandoned carts 
+•	Lower conversion rates 
+•	Lower order values 
+•	Refunds 
+•	Customer churn
+Most companies measure clicks and purchases.
+Very few measure:
+•	"Why didn't the customer decide?"
+•	This is a trillion-dollar inefficiency across digital commerce.
+
+# Task:
+
+My task is to evolve the existing Alexa-based architecture into a true GenAI Decision Intelligence Platform as a Service (DIPaaS).
+
+The current solution already has a voice-enabled customer experience and end-to-end Alexa flow, but it is not yet a GenAI-driven decision system. It remains primarily a voice customer service path that delivers responses, rather than a decision intelligence platform that understands intent, negotiates outcomes, substitutes unavailable items, and optimizes promotions in real time.
+
+The objective is to identify where the current architecture can be extended with GenAI so that the agent becomes a concierge and decision partner that:
+
+1.	Understands customer intent beyond simple commands
+2.	Finds the best restaurant and order outcomes
+3.	Negotiates cart optimization and cost tradeoffs
+4.	Substitutes 86’d items and upsells relevant alternatives
+5.	Applies promotions while maximizing customer savings and business profit
+
+This turns the experience from “Customer Service as a Service” into “Revenue Generation as a Service,” and from a single Alexa channel into a reusable platform that can support multiple applications.
+
+In my mind I need to build a system which is a "Decision Intelligence Platform as a Service (DIPaaS)".
+
+A centralized GenAI platform that serves multiple consumer applications (Uber Eats, Ticketmaster, Shopify) while allowing domain-specific agents and models.
+
+# Solution:
+The solution is designed as a GenAI-backed architecture layered on top of the existing Alexa voice and endpoint flow.
+
+The current draw.io diagram captures the new DIPaaS architecture by layering Bedrock Agents, Knowledge Bases, OpenSearch, event-driven orchestration, and decision-centric data stores on top of the Alexa input/output path. This architecture converts the legacy customer service workflow into a decision intelligence workflow by making every step of the UX a decision point rather than a static response.
+
+# Architecture Transition: From Legacy Customer Service to Decision Intelligence
+
+The designed solution should now include a second architecture diagram that shows:
+
+- The old customer service system: Alexa voice input → speech-to-text → API gateway → request processing → static response generation → text-to-speech output.
+
+- The new Decision Intelligence system: the same Alexa channel plus Bedrock multi-agent orchestration, intent/ranking/negotiation/substitution/promotion agents, knowledge retrieval (KB/OpenSearch/S3), event backbone, and Aurora transactional state.
+
 # agent.md - Coding Agent Deployment Playbook (UberEats DIPaaS)
 
 This runbook gives a coding agent a deterministic sequence to provision and deploy the Decision Intelligence Platform as a Service (DIPaaS) on AWS.
