@@ -7,7 +7,7 @@ Maybe the best restaurant shown by review was 40 mins away and there is a waitin
 For the business, it’s a lost opportunity. Maybe the customer and their family were hungry and that could mean a fat bill for the restaurant.
 Here comes the BIG issue of “Decision Friction”, which is causing businesses cumulatively USD 1B+ in lost business opportunity in the Restaurant and Food delivery industry.
 
-Most digital platforms obsess over:
+Most digital platforms obsess over :
 •	Discovery 
 •	Recommendations 
 •	Search relevance 
