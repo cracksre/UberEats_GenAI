@@ -1,10 +1,5 @@
 # Uber Eats DIPaaS Deployment Agent
 
-#Business Case:
-
-#Task
-
-
 ## Objective# Situation:  
 Let’s take a situation. I am a customer trying to find restaurants in my area.
 Most recommendations systems will go:
