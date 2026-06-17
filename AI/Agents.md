@@ -1,4 +1,11 @@
-# Situation:  
+# Uber Eats DIPaaS Deployment Agent
+
+#Business Case:
+
+#Task
+
+
+## Objective# Situation:  
 Let’s take a situation. I am a customer trying to find restaurants in my area.
 Most recommendations systems will go:
 “Here are the listed restaurants in your area”.
@@ -260,3 +267,148 @@ Prompt 1 (Build the platform): "Set up a production-ready AWS Decision Intellige
 Prompt 2 (Make it resilient and secure): "Make the system reliable at very high traffic scale with async processing, retries, DLQ, idempotency, and concurrency controls. Apply security-in-depth, and add monitoring/tracing with CloudWatch and X-Ray. Track business KPIs like conversion improvement and reduced decision friction."
 
 Prompt 3 (Ship it safely): "Add CI/CD with quality checks, security scans, deployment approvals, environment promotion, smoke tests, and post-deploy validation. Add a clear rollback plan (versioning, canary or blue/green, and data recovery). Return final deployment outputs: endpoints, Bedrock agent and KB IDs, enabled security controls, scaling setup, known risks, and a prioritized remediation list."
+
+
+Deploy production-grade GenAI Decision Intelligence Platform.
+
+## Stack
+
+AWS:
+- Bedrock
+- Bedrock Agents
+- Bedrock Knowledge Base
+- OpenSearch Serverless
+- Aurora PostgreSQL
+- Lambda
+- API Gateway
+- EventBridge
+- S3
+- IAM
+- KMS
+- CloudWatch
+
+
+## Repository Structure
+
+/app
+
+ agents/
+    intent_agent.py
+    restaurant_agent.py
+    negotiation_agent.py
+    substitution_agent.py
+    upsell_agent.py
+
+ services/
+
+    api_gateway/
+    lambda/
+    ingestion/
+
+ infra/
+
+    terraform/
+
+ tests/
+
+
+## Python Dependencies
+
+boto3
+aws-lambda-powertools
+langchain
+bedrock-agent-runtime
+opensearch-py
+sqlalchemy
+fastapi
+pydantic
+
+
+## Deploy Steps
+
+
+1. Create VPC
+
+2. Create IAM roles
+
+3. Deploy OpenSearch
+
+4. Create Bedrock Knowledge Base
+
+5. Load restaurant data from S3
+
+6. Create Aurora schema
+
+
+Tables:
+
+restaurants
+menus
+inventory
+orders
+promotions
+customers
+
+
+7. Deploy Lambda functions
+
+
+Functions:
+
+intent-parser
+
+restaurant-ranking
+
+promotion-engine
+
+substitution-engine
+
+upsell-engine
+
+
+8. Create EventBridge rules
+
+
+Events:
+
+MENU_UPDATED
+
+ITEM_OUT_OF_STOCK
+
+ORDER_CREATED
+
+
+9. Deploy API Gateway
+
+
+Endpoints:
+
+POST /conversation
+
+POST /recommend
+
+POST /order
+
+
+10. Enable monitoring
+
+CloudWatch:
+- latency
+- token usage
+- conversion rate
+- abandonment
+
+
+## Success Metrics
+
+Track:
+
+Decision Time Reduction
+
+Conversion Rate
+
+Average Order Value
+
+Merchant Revenue Lift
+
+Customer Satisfaction
