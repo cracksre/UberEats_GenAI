@@ -1,0 +1,35 @@
+{
+  "id": "uber-eats",
+  "name": "AI Uber Eats Experience",
+  "description": "Complete Uber Eats food ordering experience with voice ordering, menu management, and shopping cart functionality",
+  "industry": "menu",
+  "complexity": "intermediate",
+  "icon": "🚗",
+  "version": "1.0.0",
+  "author": "Amazon Nova Team",
+  "features": [
+    "Voice AI ordering with Nova Sonic",
+    "Dynamic menu management",
+    "Shopping cart with customizations",
+    "Loyalty program integration",
+    "Combo detection and pricing",
+    "Real-time order processing"
+  ],
+  "estimatedSetupTime": "2 minutes",
+  "tags": ["uber-eats", "fast-food", "voice-ordering", "menu"],
+  "requirements": {
+    "cognito": true,
+    "bedrock": true,
+    "apiGateway": true
+  },
+  "preview": {
+    "image": "/samples/uber-eats/preview.jpg",
+    "description": "Experience the future of Uber Eats ordering with AI-powered voice interactions, real-time menu updates, and seamless cart management."
+  },
+  "setupInstructions": [
+    "Configure your Amazon Cognito User Pool and Identity Pool",
+    "Set up API Gateway endpoints for menu and cart operations",
+    "Ensure Amazon Bedrock Nova Sonic access in your region",
+    "Test voice permissions in your browser"
+  ]
+}
