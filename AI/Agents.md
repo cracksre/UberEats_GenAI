@@ -67,7 +67,7 @@ The designed solution should now include a second architecture diagram that show
 
 - The old customer service system: Alexa voice input → speech-to-text → API gateway → request processing → static response generation → text-to-speech output.
 
-- The new Decision Intelligence system: the same Alexa channel plus Bedrock multi-agent orchestration, intent/ranking/negotiation/substitution/promotion agents, knowledge retrieval and distribution(KB/CDN), event backbone, and DynamoDB to keep the cost low.
+- The new Decision Intelligence system: the same Alexa channel plus Bedrock Agent (Amazon Nova Sonic model ), which shall take care of the various tasks, namely, intent/ranking/negotiation/substitution/promotion and trigger API gateway to interact with DynamoDB table. The Amazon Nova canvas model will be triggered by the Almda function to generate picture of menu items chosen and stored in S# bucket using knowledge retrieval and distribution(KB/CDN), event backbone, and DynamoDB to keep the cost low.
 
 # agent.md - Coding Agent Deployment Playbook (UberEats DIPaaS)
 
@@ -75,7 +75,7 @@ This runbook gives a coding agent a deterministic sequence to provision and depl
 
 ## 1) Objective
 
-Deploy a multi-agent, production-grade architecture that:
+Deploy a multi-agent architecture that:
 
 1. Understands user intent from chat and voice.
 2. Finds best restaurant outcomes (value + ETA + wait-time + preference fit).
@@ -83,36 +83,26 @@ Deploy a multi-agent, production-grade architecture that:
 4. Handles substitutions for 86'd items and upsell logic.
 5. Applies restaurant promotions while maximizing customer savings and business profit.
 
-## 2) Core Stack
+## Decision Intelligence Workflow
 
-### Foundation Layer (UberEats.drawio)
+1. Access the digital menu via voice commands using Alexa voice assistant to the application hosted on Amplify.
+2. Amazon Cognito manages temporary AWS credentials with scoped IAM permissions and secured access to backend service through token based authorization.
+3. The Digital menu uses the AWS SDK Biderictinal streaming API to establish a SigV4 signed Websocket session with Amazon Bedrock, a fully managed service with built in security, privacy and responsible AI.
+4. The app passes tool definitions and a system prompt to Amazon Nova2 Sonic enabling the model to orchestrate tool calls and streaming audio.
+5. Amazon Nova 2 Sonic processes your streaming audio and invokes tools defined at the application level.
+6. The Applications tool router captures model requests with parameters to manipulate the UI and make API calls.
+7. You initiate the voice input based on Alexa voice and Alexa skills as a trigger through the Bedrock agent, the API gateway. 
+8. The API gateway routes tool requests to DynamoDB tables for menu, cart, order, loyalty and chat data.
+9. Amazon CloudFront delivers AI generated menu images stored in Amazon S3 using Amazon Opensearch , protected by Amazon WAF, that filters malicious traffic and prevents malicious attacks.
+10. Amazon Lambda triggers the Amazon Nova Canvas AI model to generate the image and stores the index in S3 and updates the image reference in the DynamoDB menu table (Happens during initial deployment), OR during addition of a new dish in the menu.
+11. Amazon KMS encrypts the Dynamod DB table.
+12. Amazon SQS processes DLQ for failed Amazon Lamda invocations for retries.
+13. Amazon X-Ray captures Agents metrics and logs
+14. Amazon Cloudwatch collects logs and Cloudtrail collects traces.
 
-The foundational AWS infrastructure establishes the base platform before any GenAI orchestration is layered on top. It includes:
 
-- Auth: Amazon Cognito — user authentication with Cognito Groups (`AppUserGroup /appuser`), token exchange via AWS STS, and JSON Web Token issuance.
-- Edge/API: API Gateway — routes all client requests from Alexa Skill, Mobile Device, WebApp, and Kiosk channels.
-- CDN: Amazon CloudFront — serves menu images from S3 to all client channels with low-latency global distribution.
-- Storage: Amazon S3 (Standard Bucket + delivery bucket) — stores AI-generated food photography and menu assets produced by the Lambda Data and Image Function.
-- Data: Amazon DynamoDB — five domain tables: Menu, Loyalty, Cart, Order, and Chat.
-- Compute: AWS Lambda (Data and Image Function) — populates the system with a complete embedded menu (entrees, main courses, soups and salads, breads, curries, and sweet dishes) and calls Amazon Nova Canvas to generate professional food photography for each item, storing images in S3 for CloudFront delivery.
-- AI Image Generation: Amazon Bedrock — Amazon Nova Canvas model, invoked by the Lambda Data and Image Function to produce menu item photography automatically.
-- Frontend Hosting: AWS Amplify — hosts the web application frontend.
-- Security: AWS WAF + AWS Shield + Amazon GuardDuty — edge protection and threat detection.
-- Network Boundary: AWS Region isolation with VPC account boundary (`VoiceAi Account`).
 
-### DIPaaS Intelligence Layer
-
-- Edge/API: API Gateway + WAF + Shield
-- Compute: Lambda
-- Orchestration: Amazon Bedrock multi-agent routing (Bedrock Agent + Bedrock AgentCore)
-- Memory: Agent Memory store for session context
-- Knowledge: Bedrock Knowledge Bases backed by OpenSearch + S3
-- Data: DynamoDB (low-cost operational tables) + S3 data lake
-- Identity and Access: Amazon Cognito (user pools + groups + STS/JWT) + AWS IAM (least-privilege roles and policies for every service)
-- Security: KMS CMKs, VPC private subnets
-- Ops: CloudWatch Logs/Metrics/Alarms + X-Ray traces
-
-## 2.1) Service Options and Why Chosen
+## 2) Service Options and Why Chosen
 
 - Identity and Access Management
 	- Chosen: Amazon Cognito + AWS IAM
@@ -217,43 +207,67 @@ The foundational AWS infrastructure establishes the base platform before any Gen
 - opensearch-py
 - uvicorn
 
-## 6) Terraform Module Families
+## 6) Terraform Module (main.tf)
+
+### Network and Edge
 
 - terraform-aws-modules/vpc/aws
 - terraform-aws-modules/security-group/aws
-- terraform-aws-modules/s3-bucket/aws
+
+### Compute and API
+
 - terraform-aws-modules/lambda/aws
 - aws-ia/apigateway-v2/aws
+
+### Storage and Data
+
+- terraform-aws-modules/s3-bucket/aws
+- terraform-aws-modules/dynamodb-table/aws
+
+### Identity and Access
+
+- terraform-aws-modules/iam/aws
+  - Submodules: `iam-role`, `iam-policy`, `iam-assumable-role`
+- terraform-aws-modules/cognito-user-pool/aws
+
+### Encryption
+
+- terraform-aws-modules/kms/aws
+
+### Security and Edge Protection
+
+- hashicorp/aws provider — `aws_wafv2_web_acl`, `aws_wafv2_rule_group`, `aws_wafv2_ip_set`
+- hashicorp/aws provider — `aws_shield_protection`, `aws_shield_protection_group`
+  - Note: Shield Advanced requires prior subscription activation via the AWS console or CLI
+- hashicorp/aws provider — `aws_guardduty_detector`, `aws_guardduty_filter`, `aws_guardduty_publishing_destination`
+
+### Content Delivery
+
+- terraform-aws-modules/cloudfront/aws
+
+### Messaging and Buffering
+
+- terraform-aws-modules/sqs/aws
+  - Used for async fan-out between agent Lambdas and dead-letter routing for failed events
+
+### Observability and Audit
+
+- hashicorp/aws provider — `aws_cloudtrail`, `aws_cloudtrail_event_data_store`
+  - Requires S3 bucket with CloudTrail-specific bucket policy; use terraform-aws-modules/s3-bucket/aws with the `attach_cloudtrail_policy` flag
+- hashicorp/aws provider — `aws_xray_group`, `aws_xray_sampling_rule`, `aws_xray_encryption_config`
+  - X-Ray tracing is enabled per Lambda via `tracing_config { mode = "Active" }` in the Lambda module
+
+### AI and Knowledge
+
 - aws-ia/bedrock/aws (or equivalent Bedrock-supported module set)
 - OpenSearch provider-based modules/resources
 
-## 7) Deployment Sequence
-
-1. Provision network and private connectivity boundaries.
-2. Provision identity and access controls (IAM roles + Cognito user pool) and encryption baseline (KMS).
-3. Provision persistent data plane (S3, DynamoDB, OpenSearch).
-4. Provision application plane (API Gateway, Lambda ingress, agent Lambdas, Data and Image Function).
-6. Provision Bedrock multi-agent orchestration and Knowledge Base integration.
-7. Deploy frontend application to AWS Amplify (application code provided separately).
-8. Provision observability and operational guardrails.
-
-## 8) Speech and Concierge Workflow
-
-1. Ingest voice from Alexa channel.
-2. Convert voice to text.
-3. Route intent to Bedrock multi-agent orchestrator.
-4. Execute intent, ranking, negotiation, substitution/upsell, and promotions agents.
-5. Retrieve grounding context from Knowledge Base with OpenSearch and S3.
-6. Persist decision and session outputs to Aurora/S3.
-7. Generate response text and convert to speech.
-8. Return spoken response to Alexa channel.
-
-## 9) Scale and Reliability Requirements
+## 8) Scale and Reliability Requirements
 
 - Support millions of requests through async fan-out and buffering.
 - Enforce idempotency for all order-impacting operations.
 - Apply retries and dead-letter routing for failed events.
-- Configure autoscaling and concurrency controls for ingress and workers.
+- Configure autoscaling and concurrency controls for ingress.
 
 ## 10) Security-in-Depth Requirements
 
@@ -297,81 +311,29 @@ The foundational AWS infrastructure establishes the base platform before any Gen
 - Progressive delivery and rollback at service boundaries.
 - Data protection and recovery posture for persistent stores.
 
-## 15) Instructions to Coding Agent (Prompt-Only)
 
-Use the following short, user-friendly prompt set directly with a coding agent for a 45-60 minute interview.
-
-Prompt 1 (Build the foundation and platform): "Set up a production-ready AWS Decision Intelligence platform for UberEats 
- Step 1 — provision the Foundation Layer: Cognito user pool with AppUserGroup, API Gateway, CloudFront distribution backed by S3 for menu images, DynamoDB tables (Menu, Loyalty, Cart, Order, Chat), and the Lambda Data and Image Function that seeds the full embedded menu (entrees, main courses, soups and salads, breads, curries, sweet dishes) and calls Amazon Bedrock Nova Canvas to generate professional food photography per item, storing images in S3 for CloudFront delivery. 
- Step 2 — provision the DIPaaS Intelligence Layer on top: Bedrock multi-agent orchestration (Bedrock Agent + AgentCore + Agent Memory), Bedrock Knowledge Base backed by OpenSearch Serverless and S3, and the five agent Lambdas (intent-parser, restaurant-ranking, promotion-engine, substitution-engine, upsell-engine). Apply WAF + Shield at the edge, IAM least-privilege execution roles per service, KMS encryption, GuardDuty threat detection, and VPC private subnets. Also implement the full Alexa voice journey from speech input to spoken response."
-
-Prompt 2 (Make it resilient and deploy the frontend): "Configure the Amplify app to deploy the application code provided by the user. Connect the Amplify app to the Cognito user pool and API Gateway endpoints provisioned in Prompt 1. Make the backend reliable at very high traffic scale with Lambda concurrency controls and idempotency on all order-impacting operations. Apply security-in-depth (IAM scoped roles, Cognito JWT validation at API Gateway, KMS at rest, GuardDuty active), and add monitoring and tracing with CloudWatch and X-Ray. Track business KPIs: decision time reduction, conversion rate, average order value, and customer satisfaction."
-
-Prompt 3 (Ship it safely): "Add CI/CD with quality checks, security scans (IaC and application code), deployment approvals, environment promotion, and post-deploy smoke tests — including a validation that Amplify serves the frontend, Cognito issues tokens, the Data and Image Function has seeded all menu items with Nova Canvas images, DynamoDB tables contain expected data, and the Bedrock agent responds to a test intent. Add a rollback plan covering versioned Lambda releases, Amplify branch rollback, and DynamoDB point-in-time recovery. Return final deployment outputs: Amplify app URL, API Gateway endpoint, Cognito user pool and client IDs, Bedrock agent and Knowledge Base IDs, enabled security controls, scaling configuration, known risks, and a prioritised remediation list."
-
-
-Deploy production-grade GenAI Decision Intelligence Platform.
-
-## Stack
-
-AWS:
-- Cognito (user auth + groups + STS token exchange) + IAM (service execution roles)
-- CloudFront (CDN for menu images)
-- S3 (menu image store + data lake)
-- DynamoDB (Menu, Loyalty, Cart, Order, Chat tables)
-- API Gateway
-- Lambda (Data and Image Function + agent Lambdas)
-- Amazon Bedrock — Amazon Nova Canvas (AI food photography generation)
-- Bedrock Agent + Bedrock AgentCore
-- Bedrock Knowledge Base
-- Agent Memory
-- OpenSearch Serverless
-- AWS Amplify (frontend hosting + CI/CD deployment)
-- WAF + Shield + GuardDuty
-- KMS
-- CloudWatch + X-Ray
+# Backend (to be provisioned — not yet scaffolded in this repo)
+# agents/
+#    intent_agent.py
+#    restaurant_agent.py
+#    negotiation_agent.py
+#    substitution_agent.py
+#    upsell_agent.py
+# services/
+#    api_gateway/
+#    lambda/
+#       data_image_function/   # seeds menu + calls Nova Canvas for food photography
+#    ingestion/
+# infra/
+#    terraform/
+# tests/
+#
+# Python dependencies (required when backend is scaffolded):
+#   boto3, botocore, pydantic, fastapi, mangum, opensearch-py, uvicorn
+#   aws-lambda-powertools, langchain, bedrock-agent-runtime, sqlalchemy
 
 
-## Repository Structure
-
-/app
-
- agents/
-    intent_agent.py
-    restaurant_agent.py
-    negotiation_agent.py
-    substitution_agent.py
-    upsell_agent.py
-
- services/
-
-    api_gateway/
-    lambda/
-       data_image_function/   # seeds menu + calls Nova Canvas for food photography
-    ingestion/
-
- frontend/                    # application code provided by user; deployed to AWS Amplify
-
- infra/
-
-    terraform/
-
- tests/
-
-
-## Python Dependencies
-
-boto3
-aws-lambda-powertools
-langchain
-bedrock-agent-runtime
-opensearch-py
-sqlalchemy
-fastapi
-pydantic
-
-
-## Deploy Steps
+## Deploy Steps (instructions to agent)
 
 
 1. Create VPC and network boundaries
@@ -421,7 +383,7 @@ promotions
 customers
 
 
-12. Deploy agent Lambdas
+12. Deploy agent Lambda
 
 Functions:
 
