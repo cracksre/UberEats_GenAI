@@ -1,4 +1,12 @@
-﻿
+﻿# Architecture Transition: From Legacy Customer Service to Decision Intelligence
+
+The designed solution should now include a second architecture diagram that shows:
+
+- The old customer service system: Alexa voice input → speech-to-text → API gateway → request processing → static response generation → text-to-speech output.
+
+- The new Decision Intelligence system: the same Alexa channel plus Bedrock Agent (Amazon Nova Sonic model ), which shall take care of the various tasks, namely, intent/ranking/negotiation/substitution/promotion and trigger API gateway to interact with DynamoDB table. The Amazon Nova canvas model will be triggered by the Almda function to generate picture of menu items chosen and stored in S# bucket using knowledge retrieval and distribution(KB/CDN), event backbone, and DynamoDB to keep the cost low.
+
+
 ## 2) Service Options and Why Chosen
 
 - Identity and Access Management
