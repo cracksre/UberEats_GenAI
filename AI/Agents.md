@@ -178,46 +178,45 @@ Create a terraform main.tf with the following terraform modules:
 - automated security scanning (Snyk) must pass
 
 
-Create a naming.tf with all the parameters constant for the environment and the services:
+- Create a naming.tf with all the parameters constant for the environment and the services:
 
-region = "east=us-1"
-env = "dev"
-app_id = "app-1"
-cmdb_id = "CMDB0001"
+ - region = "east=us-1"
+ - env = "dev"
+ - app_id = "app-1"
+ - cmdb_id = "CMDB0001"
 
 ```terraform pipeline (iac-pipeline.yaml):
-Create a terraform pipeline to refer the main.tf and naming.tf to deploy the infrastructure in AWS.
-Use the terraform listed above.
+Create a terraform pipeline to refer the main.tf and naming.tf to deploy the infrastructure in AWS. Use the terraform modules listed above.
 
 In the first stage install the tools:
-github.exe
-python.exe
-terraform.exe
+ - github.exe
+ - python.exe
+ - terraform.exe
 
 Initialize terraform using terraform init 
 
-Run terraform Plan terraform plan -out=tfplan
+ - Run terraform Plan terraform plan -out=tfplan
 
-Run  terraform apply tfplan ONLY if the env = dev or env = test.
-DO NOT run terraform apply tfplan if env = prod
-Run terraform destroy -auto-approve  # Dev teardown only
+ - Run  terraform apply tfplan ONLY if the env = dev or env = test.
+ - DO NOT run terraform apply tfplan if env = prod
+ - Run terraform destroy -auto-approve  # Dev teardown only
 ```
-CI/CD (BUild/Test/Deploy) - PaaS Deployment
+## CI/CD (BUild/Test/Deploy) - PaaS Deployment
 
-Create a CI with stages: (pipeline-ci.yaml)
-Build (Refer to Python Libraries in (requirements.txt))
-Test (Specific testing instructions are provided in the Testing Instructions section)
-	Unit test using Playwright
-	Code Quality Test using SonarQube (Refer Section ## Code Style Guidelines)
-	SCA, SAST using SNYK (Refer details in section ## Security Considerations)
-	DAST using Rapid7
-Package
-Publish Package as Artifact to Artifactory
+# Create a CI with stages: (pipeline-ci.yaml)
+- Build (Refer to Python Libraries in (requirements.txt))
+- Test (Specific testing instructions are provided in the Testing Instructions section)
+	- Unit test using Playwright
+	- Code Quality Test using SonarQube (Refer Section ## Code Style Guidelines)
+	- SCA, SAST using SNYK (Refer details in section ## Security Considerations)
+	- DAST using Rapid7
+- Package
+- Publish Package as Artifact to Artifactory
 
-Create a CD pipeline with stages: (pipeline-cd.yaml)
-Only utilize the tag mentioned in the Artifactory with lifecycle = lta or release for deployment.
+# Create a CD pipeline with stages: (pipeline-cd.yaml)
+- Only utilize the tag mentioned in the Artifactory with lifecycle = lta or release for deployment.
 Following stages should run:
-Pull artifact from Artifactory
-Unzip if already zipped
-Deploy to Amplify / API Gateway / Lamda 
+- Pull artifact from Artifactory
+- Unzip if already zipped
+- Deploy to Amplify / API Gateway / Lamda 
 
