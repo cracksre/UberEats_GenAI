@@ -1,6 +1,6 @@
 ﻿# Agents.md Coding Agent Build & Design Guide
 
-Project: Uber Eats Decision Intelligence Platform as a Service (DIPaaS) â€” serverless GenAI ordering system combining Amazon Bedrock (Nova Sonic voice, Nova Canvas imagery), FastAPI/Lambda backend (Python 3.11+), and Vite/React frontend (TypeScript).
+Project: Uber Eats Decision Intelligence Platform as a Service (DIPaaS) serverless GenAI ordering system combining Amazon Bedrock (Nova Sonic voice, Nova Canvas imagery), FastAPI/Lambda backend (Python 3.11+), and Vite/React frontend (TypeScript).
 
 ---
 
