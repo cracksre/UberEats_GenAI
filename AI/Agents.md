@@ -27,11 +27,11 @@ Do NOT:
 ### US-2: UI Deployment
 
 As a customer using voice or web,
-I want the Vite/React SPA (UbereatsFrontendUI) deployed to AWS Amplify with Cognito sign-in, CloudFront-served menu images, and a working Nova Sonic bidirectional WebSocket session,
+I want the UbereatsFrontendUI deployed to AWS Amplify with Cognito sign-in, CloudFront-served menu images, and a working Nova Sonic bidirectional WebSocket session,
 so that I can authenticate, browse the AI-generated menu with real food photography, and place a voice order end-to-end without leaving the browser.
 
 Acceptance criteria:
-- Amplify build succeeds from the `main` branch; the public URL returns HTTP 200 and renders `<div id="root">`.
+- Amplify build succeeds from the `main` branch; the public URL returns HTTP 200.
 - Cognito sign-in issues a valid JWT; the JWT is accepted by the API Gateway Cognito authorizer on `GET /menu`.
 - Nova Sonic WebSocket session establishes over SigV4-signed bidirectional stream; a spoken item name triggers `AddToCart` and the cart total updates.
 
@@ -46,7 +46,7 @@ Do NOT:
 
 As a customer with decision friction,
 I want the Bedrock multi-agent orchestrator (Intent, Ranking, Negotiation, Substitution/Upsell, Promotions agents) deployed as FastAPI + Mangum Lambda functions with action groups wired to `POST /conversation`, `POST /recommend`, and `POST /order`,
-so that when I speak a vague request ("something spicy, under $20, quick") the platform understands my intent, ranks options from the Knowledge Base, negotiates the best cart outcome, handles 86'd items, and applies the highest-value promotion â€” all within a single voice turn.
+so that when I speak a vague request ("something spicy, under $20, quick") the platform understands my intent, ranks options from the Knowledge Base, negotiates the best cart outcome, handles 86'd items, and applies the highest-value promotion all within a single voice turn.
 
 Acceptance criteria:
 - All five agent Lambdas deploy without error; X-Ray active tracing shows an end-to-end trace from API Gateway through Bedrock Agent to DynamoDB on each invocation.
@@ -82,7 +82,7 @@ Python Libraries (requirements.txt):
 ```
 boto3              		# AWS SDK — Bedrock, DynamoDB, S3, Cognito, SQS
 botocore           		# AWS HTTP transport, SigV4 signing, error handling
-fastapi            		# HTTP endpoints for agent Lambdas
+litestar           		# HTTP endpoints for agent Lambdas
 pydantic           		# Request/response validation
 opensearch-py      		# OpenSearch Serverless queries (Ranking, Substitution agents)
 aws-lambda-powertools  	# Structured logging, tracing, middleware
