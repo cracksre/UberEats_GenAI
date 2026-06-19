@@ -1,274 +1,82 @@
-# Uber Eats — Decision Intelligence Platform as a Service (DIPaaS)
+﻿
+## 2) Service Options and Why Chosen
 
-A GenAI-powered voice ordering and decision intelligence system built on AWS. The platform eliminates **Decision Friction** — the hesitation customers experience after discovery — by acting as a concierge that understands intent, ranks options, negotiates cart outcomes, substitutes unavailable items, and applies promotions in real time.
+- Identity and Access Management
+	- Chosen: Amazon Cognito + AWS IAM
+	- Other options identified: AWS IAM Identity Center, Auth0 + IAM roles, custom JWT service with coarse account-level roles
+	- Why this fits best: Cognito manages user-facing authentication (user pools, groups, STS token vending, JWT issuance) and integrates natively as an API Gateway authorizer; IAM enforces least-privilege execution roles and resource policies across every AWS service — together they cover both the human identity plane and the machine identity plane without additional tooling.
 
----
+- Content Delivery
+	- Chosen: Amazon CloudFront
+	- Other options identified: AWS Global Accelerator, third-party CDN, direct S3 presigned URLs
+	- Why this fits best: Low-latency global distribution of menu images with S3 origin integration, caching, and WAF attachment at the edge.
 
-## Repository Structure
+- Operational Data Store
+	- Chosen: Amazon DynamoDB
+	- Other options identified: Amazon Aurora PostgreSQL, Amazon RDS, Redis
+	- Why this fits best: Single-digit millisecond reads for high-frequency cart, menu, and session tables at scale, with no server management and pay-per-request pricing that keeps costs low during variable traffic.
 
-```
-AI/
-├── README.md                     ← this file
-├── Agents.md                     ← coding agent deployment playbook
-├── UberEats.drawio               ← architecture diagram (foundation + DIPaaS layers)
-├── deploy/                       ← deployment orchestration (to be populated)
-├── infra/                        ← Terraform IaC modules (to be populated)
-└── src/
-    └── UbereatsFrontendUI/       ← compiled Vite/React SPA (deployed to AWS Amplify)
-        ├── index.html
-        ├── assets/               ← bundled JS, CSS, audio worklet
-        ├── config/
-        │   └── default-settings.json   ← Cognito + agent system prompt + tool definitions
-        └── samples/
-            ├── samples-index.json
-            ├── uber-eats/        ← primary sample (voice ordering concierge)
-            ├── coffee-shop/
-            ├── hotel-room-service/
-            └── pizza-delivery/
-```
+- AI Image Generation
+	- Chosen: Amazon Bedrock — Amazon Nova Canvas
+	- Other options identified: Stable Diffusion on SageMaker, DALL·E via third-party API, pre-shot photography workflow
+	- Why this fits best: Fully managed generative image model within the AWS trust boundary; no third-party data egress, consistent IAM-governed access, and direct Lambda invocation for automated menu population.
 
----
+- Frontend Hosting
+	- Chosen: AWS Amplify
+	- Other options identified: S3 static site + CloudFront, EC2/ECS-hosted frontend, Vercel/Netlify
+	- Why this fits best: Managed CI/CD hosting for web application with built-in Cognito integration and branch-based deployment.
 
-## Architecture Overview
+- Threat Detection
+	- Chosen: Amazon GuardDuty
+	- Other options identified: Third-party SIEM, CloudTrail-only monitoring
+	- Why this fits best: Continuous automated threat detection across AWS accounts with minimal configuration and native integration into Security Hub.
 
-The platform is built in two layers stacked on the same AWS account.
+- API Layer
+	- Chosen: Amazon API Gateway
+	- Other options identified: Application Load Balancer + ECS/EKS ingress, AWS App Runner, direct CloudFront + Lambda URL
+	- Why this fits best: Native throttling, auth controls, usage plans, and request transformation make it ideal for high-volume multi-channel APIs.
 
-### Layer 1 — Foundation (UberEats.drawio)
+- Compute Runtime
+	- Chosen: AWS Lambda
+	- Other options identified: Amazon ECS on Fargate, Amazon EKS, AWS App Runner
+	- Why this fits best: Event-driven scaling, low operational overhead, and strong integration with Bedrock for bursty traffic.
 
-Establishes the base platform before GenAI orchestration is applied.
+- Multi-Agent Orchestration
+	- Chosen: Amazon Bedrock Agents
+	- Other options identified: Step Functions + custom orchestration, ECS-hosted orchestration service, third-party orchestration frameworks
+	- Why this fits best: Managed orchestration with native model/tool integration and lower time-to-delivery for enterprise GenAI workflows.
 
-| Component | Service | Purpose |
-|---|---|---|
-| Auth | Amazon Cognito | User pools, AppUserGroup (`/appuser`), STS token vending, JWT issuance |
-| Edge | API Gateway | Single entry point for all client channels |
-| CDN | Amazon CloudFront | Serves AI-generated menu images from S3 |
-| Storage | Amazon S3 | Menu image origin + data lake |
-| Data | Amazon DynamoDB | Menu, Loyalty, Cart, Order, Chat tables |
-| Compute | AWS Lambda | Data and Image Function — seeds menu, calls Nova Canvas for food photography |
-| AI Images | Amazon Bedrock (Nova Canvas) | Generates professional food photography per menu item |
-| Frontend | AWS Amplify | Hosts and CI/CD deploys the SPA |
-| Security | WAF + Shield + GuardDuty | Edge protection and continuous threat detection |
+- Knowledge and Retrieval
+	- Chosen: Bedrock Knowledge Bases + OpenSearch + S3
+	- Other options identified: Aurora pgvector, DynamoDB + vector extension patterns, external vector databases
+	- Why this fits best: Managed RAG pipeline with enterprise governance, scalable vector + keyword retrieval, and durable low-cost source storage.
 
-### Layer 2 — DIPaaS Intelligence (UberEats.drawio + Agents.md)
+- Operational Data Store
+	- Chosen: Amazon DynamoDB
+	- Other options identified: Amazon Aurora PostgreSQL, Amazon RDS PostgreSQL, Amazon Redshift
+	- Why this fits best: Single-digit millisecond reads for high-frequency cart, menu, order, and session tables with no server management and pay-per-request pricing; the same DynamoDB tables provisioned in the Foundation Layer serve the full intelligence layer without an additional relational database.
 
-Layered on top of the Foundation. Every customer interaction becomes a decision point.
+- Edge Security
+	- Chosen: AWS WAF + AWS Shield
+	- Other options identified: Third-party WAF/CDN stacks, API-only throttling controls
+	- Why this fits best: Native DDoS and web threat protection tightly integrated with AWS edge and API services.
 
-| Component | Service | Purpose |
-|---|---|---|
-| Orchestrator | Amazon Bedrock Agents + AgentCore | Multi-agent routing and session management |
-| Intent Agent | Bedrock Agent + Lambda | Parses customer utterance into structured intent |
-| Ranking Agent | Bedrock Agent + Lambda | Scores restaurants by value, ETA, wait time, preference fit |
-| Negotiation Agent | Bedrock Agent + Lambda | Optimises pricing and offer scenarios for the cart |
-| Substitution/Upsell Agent | Bedrock Agent + Lambda | Handles 86'd items, recommends alternatives, upsells |
-| Promotions Agent | Bedrock Agent + Lambda | Applies eligible offers while maximising savings and margin |
-| Knowledge | Bedrock Knowledge Bases + OpenSearch Serverless + S3 | RAG retrieval — grounding agent responses in real restaurant data |
-| Memory | Agent Memory Store | Maintains session context across multi-turn conversations |
-| Encryption | AWS KMS | CMKs for data at rest across all services |
-| Observability | CloudWatch + AWS X-Ray | Logs, metrics, alarms, distributed traces |
+- Identity and Access Management
+	- Chosen: Amazon Cognito + AWS IAM
+	- Other options identified: AWS IAM Identity Center, Auth0 + IAM roles, custom JWT with coarse account-level roles
+	- Why this fits best: Cognito manages user-facing authentication (user pools, groups, STS token vending, JWT issuance) while IAM enforces least-privilege service-to-service permissions, execution roles, and resource policies across every AWS service in the stack — together they cover both the human identity plane and the machine identity plane.
 
----
+- Encryption and Keys
+	- Chosen: AWS KMS
+	- Other options identified: Application-managed keys, CloudHSM-only approach
+	- Why this fits best: Centralized key lifecycle management with native encryption integration across data services.
 
-## End-to-End Workflow
+- Networking Boundary
+	- Chosen: Amazon VPC private subnet model
+	- Other options identified: Public-only service topology, hybrid-only perimeter model
+	- Why this fits best: Strong network isolation, controlled east-west traffic, and compliance-friendly segmentation.
 
-```
-Customer speaks via Alexa / Web UI / Mobile / Kiosk
-         │
-         ▼
-[ Cognito JWT issued ] ──► API Gateway (WAF + Shield at edge)
-         │
-         ▼
-    Lambda Ingress
-         │
-         ▼
-  Bedrock Agent Orchestrator
-    ├── Intent Agent          ← understands what the customer actually wants
-    ├── Ranking Agent         ← finds the best restaurant match
-    ├── Negotiation Agent     ← optimises the cart value
-    ├── Substitution/Upsell   ← handles 86'd items, suggests better alternatives
-    └── Promotions Agent      ← applies offers, maximises savings
-         │
-         ├── Bedrock Knowledge Bases
-         │       ├── OpenSearch Serverless  ← vector + keyword retrieval
-         │       └── S3 data lake          ← source documents
-         │
-         ├── DynamoDB          ← Menu, Cart, Order, Loyalty, Chat tables
-         │
-         └── Merchant/POS APIs ← live menu, stock, ETA confirmation
-         │
-         ▼
-    Amazon Polly (text → speech)
-         │
-         ▼
-    Spoken response returned to customer channel
-```
-
-### Frontend Interaction Detail
-
-The SPA (`UbereatsFrontendUI`) uses **Amazon Bedrock Runtime `InvokeModelWithBidirectionalStream`** over WebSocket for real-time voice interaction with **Amazon Nova Sonic**. The agent tools are JavaScript functions defined inside `settings.json` and executed client-side, calling the backend APIs with a Cognito JWT.
-
-| Tool | What it does | Backend call |
-|---|---|---|
-| `GetDateAndTime` | Returns current timestamp for agent context | Client-side only |
-| `GetCustomerLoyaltyInfo` | Looks up loyalty points by phone number | `GET {loyaltyAPIURL}?phone=…` with JWT |
-| `GetMenuItems` | Fetches full menu catalogue (cached 2 min) | `GET {menuAPIURL}` with JWT |
-| `AddToCart` | Adds item + customisations to the cart component | Client-side cart state |
-| `addCustomizationToCartItem` | Applies customisations to an existing cart line | Client-side cart state |
-| `RemoveItemFromCart` | Removes item by ID or natural language description | Client-side cart state |
-| `GetCurrentCartItems` | Returns live cart state and running total | Client-side cart state |
-| `ShowCategoryItems` | Filters the visible menu to a category (upsell strategy) | Client-side UI component |
-| `GetCategoryList` | Returns all available categories | Client-side menu component |
-| `SubmitOrder` | Posts the confirmed cart to the order API | `POST /order` with JWT |
-| `FinalizeSessionForNextCustomer` | Resets session state after order is complete | Client-side session reset |
-
-The tools that touch the backend always:
-1. Call `auth.getTokens()` to obtain the Cognito `idToken`.
-2. Pass the token as `Authorization: {idToken}` on every API Gateway request.
-
----
-
-## Python Libraries — Where Each One Lives
-
-The Python libraries listed in `Agents.md §5` are **backend-only**. The frontend is JavaScript (Vite/React). Here is the precise mapping:
-
-| Library | Used in | Purpose |
-|---|---|---|
-| `boto3` | All agent Lambdas + Data and Image Function | AWS SDK — calls Bedrock Agent Runtime, DynamoDB, S3, Cognito, OpenSearch, Polly |
-| `botocore` | All agent Lambdas | Low-level AWS HTTP transport, SigV4 signing, retry logic; `botocore.exceptions.ClientError` is caught on every AWS call |
-| `pydantic` | All agent Lambdas | Validates and serialises request/response payloads (`/conversation`, `/recommend`, `/order`) |
-| `fastapi` | All agent Lambdas | Web framework that implements the Lambda-hosted HTTP endpoints |
-| `mangum` | All agent Lambdas | ASGI adapter — wraps the FastAPI app so API Gateway events are handled inside Lambda |
-| `opensearch-py` | Ranking Agent, Substitution Agent | Queries OpenSearch Serverless vector index for restaurant and menu retrieval; uses AWS4Auth (boto3-based) — **not** username/password |
-| `uvicorn` | Local development only | ASGI server for running FastAPI locally before deployment; **never deployed to Lambda** |
-
-### Typical Lambda handler pattern
-
-```python
-from fastapi import FastAPI, Depends
-from mangum import Mangum
-from pydantic import BaseModel
-import boto3
-import botocore
-
-app = FastAPI()
-
-class OrderRequest(BaseModel):
-    session_id: str
-    utterance: str
-
-@app.post("/conversation")
-def conversation(req: OrderRequest):
-    client = boto3.client("bedrock-agent-runtime")
-    try:
-        response = client.invoke_agent(
-            agentId="...",
-            agentAliasId="...",
-            sessionId=req.session_id,
-            inputText=req.utterance,
-        )
-        return {"response": response}
-    except botocore.exceptions.ClientError as e:
-        raise
-
-handler = Mangum(app)  # Lambda entry point
-```
-
-```bash
-# Local testing only — not deployed
-uvicorn main:app --reload --port 8000
-```
-
----
-
-## Agent Lambdas — Backend Functions to Provision
-
-```
-src/
-└── agents/
-    ├── intent_agent.py          # POST /conversation → Bedrock orchestrator
-    ├── restaurant_agent.py      # restaurant ranking via OpenSearch + DynamoDB
-    ├── negotiation_agent.py     # cart value optimisation
-    ├── substitution_agent.py    # 86'd item handling + upsell
-    └── upsell_agent.py          # promotion and combo detection
-```
-
-API Gateway endpoints:
-
-| Method | Path | Handler | Description |
-|---|---|---|---|
-| `POST` | `/conversation` | `intent_agent` | Receives utterance, routes to Bedrock orchestrator |
-| `POST` | `/recommend` | `restaurant_agent` | Returns ranked restaurant list |
-| `POST` | `/order` | _(order Lambda)_ | Submits confirmed cart to Order table |
-| `GET` | `/menu` | _(menu Lambda)_ | Returns full menu catalogue |
-| `GET` | `/loyalty` | _(loyalty Lambda)_ | Returns loyalty points by phone |
-
-All endpoints require a valid Cognito JWT in the `Authorization` header, validated by the API Gateway Cognito authorizer.
-
----
-
-## Frontend Configuration
-
-Before deploying the SPA to Amplify, populate `config/default-settings.json` and the sample `settings.json` files with live values:
-
-```json
-{
-  "settings": {
-    "cognito": {
-      "userPoolId": "us-east-1_XXXXXXXXX",
-      "userPoolClientId": "XXXXXXXXXXXXXXXXXXXXXXXXXX",
-      "identityPoolId": "us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "region": "us-east-1"
-    },
-    "agent": {
-      "agentId": "XXXXXXXXXX",
-      "agentAliasId": "XXXXXXXXXX",
-      "region": "us-east-1"
-    },
-    "globals": {
-      "menuAPIURL": "https://{api-id}.execute-api.us-east-1.amazonaws.com/prod/menu",
-      "loyaltyAPIURL": "https://{api-id}.execute-api.us-east-1.amazonaws.com/prod/loyalty"
-    }
-  }
-}
-```
-
----
-
-## Deployment Sequence
-
-Follow the sequence in `Agents.md §7` in strict order to avoid dependency failures:
-
-1. **Network** — VPC, private subnets, security groups
-2. **Identity + Encryption** — IAM roles (least privilege per Lambda), Cognito user pool + AppUserGroup, KMS CMKs
-3. **Data plane** — S3 buckets, DynamoDB tables (Menu, Loyalty, Cart, Order, Chat), OpenSearch Serverless collection
-4. **Compute** — Lambda Data and Image Function (seeds menu + calls Nova Canvas), agent Lambdas
-5. **Knowledge** — Bedrock Knowledge Base connected to OpenSearch + S3
-6. **Orchestration** — Bedrock Agent + AgentCore, action groups wired to agent Lambdas
-7. **API** — API Gateway with Cognito authorizer, WAF association
-8. **Frontend** — Amplify app connected to Git repo, environment variables injected, build triggered
-9. **Observability** — CloudWatch dashboards, X-Ray traces, alarms on latency / token usage / conversion / abandonment
-
----
-
-## Security Controls
-
-| Control | Service | Coverage |
-|---|---|---|
-| Edge protection | WAF + Shield | DDoS and OWASP Top 10 at API Gateway and CloudFront |
-| Authentication | Amazon Cognito | JWT issuance, group-based access (`AppUserGroup`) |
-| API authorisation | API Gateway Cognito Authorizer | Every backend endpoint validates JWT before invocation |
-| Service permissions | AWS IAM | Least-privilege execution role per Lambda; no wildcard actions |
-| Data encryption | AWS KMS | CMKs for DynamoDB, S3, OpenSearch at rest |
-| Network isolation | VPC private subnets | Stateful services unreachable from the public internet |
-| Threat detection | Amazon GuardDuty | Continuous behavioural anomaly detection across the account |
-
----
-
-## Success Metrics
-
-| Metric | Description |
-|---|---|
-| Decision Time Reduction | Average time from first utterance to confirmed order |
-| Conversion Rate | Percentage of sessions that result in a submitted order |
-| Average Order Value | Revenue per completed order |
-| Merchant Revenue Lift | Incremental revenue attributable to upsell and negotiation agents |
-| Customer Satisfaction | Post-order rating and repeat session rate |
+- Observability
+	- Chosen: CloudWatch + AWS X-Ray
+	- Other options identified: OpenTelemetry with self-hosted observability stack, third-party APM-only stacks
+	- Why this fits best: Native metrics/logs/traces and lower operational complexity for production operations.
