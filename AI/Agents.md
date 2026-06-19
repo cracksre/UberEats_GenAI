@@ -64,7 +64,8 @@ Do NOT:
 
 Frontend (src/UbereatsFrontendUI/):
 ```bash
-npm install && npm run build    # Build Vite SPA (output: dist/)
+npm -v
+npm install -g npm@latest && npm run build    # Build Vite SPA (output: dist/)
 npm run dev                     # Local dev server on :5173
 npm run preview                 # Preview production build
 ```
@@ -90,11 +91,60 @@ pytest             		# Test runner (dev only)
 ```
 
 Infrastructure (infra/terraform/):
-```bash
-terraform init && terraform plan -out=tfplan
-terraform apply tfplan
-terraform destroy -auto-approve  # Dev teardown only
-```
+Create a terraform main.tf with the following terraform modules:
+### Network and Edge
+
+- terraform-aws-modules/vpc/aws
+- terraform-aws-modules/security-group/aws
+
+### Compute and API
+
+- terraform-aws-modules/lambda/aws
+- aws-ia/apigateway-v2/aws
+
+### Storage and Data
+
+- terraform-aws-modules/s3-bucket/aws
+- terraform-aws-modules/dynamodb-table/aws
+
+### Identity and Access
+
+- terraform-aws-modules/iam/aws
+  - Submodules: `iam-role`, `iam-policy`, `iam-assumable-role`
+- terraform-aws-modules/cognito-user-pool/aws
+
+### Encryption
+
+- terraform-aws-modules/kms/aws
+
+### Security and Edge Protection
+
+- hashicorp/aws provider — `aws_wafv2_web_acl`, `aws_wafv2_rule_group`, `aws_wafv2_ip_set`
+- hashicorp/aws provider — `aws_shield_protection`, `aws_shield_protection_group`
+  - Note: Shield Advanced requires prior subscription activation via the AWS console or CLI
+- hashicorp/aws provider — `aws_guardduty_detector`, `aws_guardduty_filter`, `aws_guardduty_publishing_destination`
+
+### Content Delivery
+
+- terraform-aws-modules/cloudfront/aws
+
+### Messaging and Buffering
+
+- terraform-aws-modules/sqs/aws
+  - Used for async fan-out between agent Lambdas and dead-letter routing for failed events
+
+### Observability and Audit
+
+- hashicorp/aws provider — `aws_cloudtrail`, `aws_cloudtrail_event_data_store`
+  - Requires S3 bucket with CloudTrail-specific bucket policy; use terraform-aws-modules/s3-bucket/aws with the `attach_cloudtrail_policy` flag
+- hashicorp/aws provider — `aws_xray_group`, `aws_xray_sampling_rule`, `aws_xray_encryption_config`
+  - X-Ray tracing is enabled per Lambda via `tracing_config { mode = "Active" }` in the Lambda module
+
+### AI and Knowledge
+
+- aws-ia/bedrock/aws (or equivalent Bedrock-supported module set)
+- OpenSearch provider-based modules/resources
+
 
 ## Code Style Guidelines
 
@@ -126,3 +176,48 @@ terraform destroy -auto-approve  # Dev teardown only
 - CHANGELOG.md updated
 - Code review: At least 2 approvals before merge 
 - automated security scanning (Snyk) must pass
+
+
+Create a naming.tf with all the parameters constant for the environment and the services:
+
+region = "east=us-1"
+env = "dev"
+app_id = "app-1"
+cmdb_id = "CMDB0001"
+
+```terraform pipeline (iac-pipeline.yaml):
+Create a terraform pipeline to refer the main.tf and naming.tf to deploy the infrastructure in AWS.
+Use the terraform listed above.
+
+In the first stage install the tools:
+github.exe
+python.exe
+terraform.exe
+
+Initialize terraform using terraform init 
+
+Run terraform Plan terraform plan -out=tfplan
+
+Run  terraform apply tfplan ONLY if the env = dev or env = test.
+DO NOT run terraform apply tfplan if env = prod
+Run terraform destroy -auto-approve  # Dev teardown only
+```
+CI/CD (BUild/Test/Deploy) - PaaS Deployment
+
+Create a CI with stages: (pipeline-ci.yaml)
+Build (Refer to Python Libraries in (requirements.txt))
+Test (Specific testing instructions are provided in the Testing Instructions section)
+	Unit test using Playwright
+	Code Quality Test using SonarQube (Refer Section ## Code Style Guidelines)
+	SCA, SAST using SNYK (Refer details in section ## Security Considerations)
+	DAST using Rapid7
+Package
+Publish Package as Artifact to Artifactory
+
+Create a CD pipeline with stages: (pipeline-cd.yaml)
+Only utilize the tag mentioned in the Artifactory with lifecycle = lta or release for deployment.
+Following stages should run:
+Pull artifact from Artifactory
+Unzip if already zipped
+Deploy to Amplify / API Gateway / Lamda 
+
